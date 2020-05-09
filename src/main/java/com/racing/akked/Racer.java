@@ -2,6 +2,7 @@ package com.racing.akked;
 
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.Behavior;
+import akka.actor.typed.PostStop;
 import akka.actor.typed.javadsl.AbstractBehavior;
 import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.Behaviors;
@@ -133,10 +134,29 @@ public class Racer extends AbstractBehavior<Racer.Command> {
 
                 .onMessage(PositionCommand.class, command -> {
 
-                    final RaceController.RacerUpdateCommand racerUpdateCommand =
-                            new RaceController.RacerUpdateCommand(getContext().getSelf(), (int) raceLength);
-                    command.getController().tell(racerUpdateCommand);
+                    command.getController().tell(
+                        new RaceController.RacerUpdateCommand(getContext().getSelf(), (int) raceLength)
+                    );
 
+                    command.getController().tell(
+                        new RaceController.RaceFinishedCommand(getContext().getSelf())
+                    );
+
+                    return waitingToStop();
+                })
+
+                .build();
+    }
+
+    public Receive<Racer.Command> waitingToStop() {
+        return newReceiveBuilder()
+
+                .onAnyMessage(message -> {
+                    return Behaviors.same();
+                })
+
+                .onSignal(PostStop.class, signal -> {
+                    logger.warn("I'm about to terminate");
                     return Behaviors.same();
                 })
 

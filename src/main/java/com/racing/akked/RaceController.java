@@ -1,5 +1,6 @@
 package com.racing.akked;
 
+import akka.actor.ActorPath;
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.Behavior;
 import akka.actor.typed.javadsl.AbstractBehavior;
@@ -36,6 +37,12 @@ public class RaceController extends AbstractBehavior<RaceController.Command> {
         public static final long serialVersionUID = 1L;
     }
 
+    @Value
+    public static class RaceFinishedCommand implements Command {
+        public static final long serialVersionUID = 1L;
+        ActorRef<Racer.Command> racer;
+    }
+
     private RaceController(ActorContext<RaceController.Command> context) {
         super(context);
     }
@@ -45,6 +52,7 @@ public class RaceController extends AbstractBehavior<RaceController.Command> {
     }
 
     private Map<ActorRef<Racer.Command>, Integer> currentPositions;
+    private Map<ActorRef<Racer.Command>, Long> finishingTimes;
     private long start;
     private int raceLength = 100;
     private Object TIMER_KEY;
@@ -56,6 +64,7 @@ public class RaceController extends AbstractBehavior<RaceController.Command> {
                 .onMessage(StartCommand.class, command ->{
                     start = System.currentTimeMillis();
                     currentPositions = new HashMap<>();
+                    finishingTimes = new HashMap<>();
                     for (int i = 0; i < 10; i++) {
                         ActorRef<Racer.Command> racer = getContext().spawn(Racer.create(), "racer" + i);
                         currentPositions.put(racer, 0);
@@ -64,7 +73,7 @@ public class RaceController extends AbstractBehavior<RaceController.Command> {
 
                     return Behaviors.withTimers(timer -> {
                         timer.startTimerAtFixedRate(TIMER_KEY, new GetPositionsCommand(), Duration.ofSeconds(1));
-                        return this;
+                        return Behaviors.same();
                     });
                 })
 
@@ -73,15 +82,51 @@ public class RaceController extends AbstractBehavior<RaceController.Command> {
                         racer -> racer.tell(new Racer.PositionCommand(getContext().getSelf()))
                     );
                     displayRace();
-                    return this;
+                    return Behaviors.same();
                 })
 
                 .onMessage(RacerUpdateCommand.class, command -> {
                     currentPositions.put(command.getRacer(), command.getPosition());
-                    return this;
+                    return Behaviors.same();
+                })
+
+                .onMessage(RaceFinishedCommand.class, command -> {
+                    finishingTimes.put(command.getRacer(), System.currentTimeMillis());
+                    if (finishingTimes.size() == 10) {
+                        return raceCompleteMessageHandler();
+                    } else {
+                        return Behaviors.same();
+                    }
                 })
 
                 .build();
+    }
+
+    public Receive<Command> raceCompleteMessageHandler() {
+        return newReceiveBuilder()
+
+                .onMessage(GetPositionsCommand.class, command -> {
+                    displayResults();
+                    return Behaviors.withTimers(timers -> {
+                        timers.cancel(TIMER_KEY);
+                        return Behaviors.stopped();
+                    });
+                })
+
+                .build();
+    }
+
+    private void displayResults() {
+        System.out.println("Results");
+        finishingTimes.values().stream().sorted().forEach(it -> {
+            for (ActorRef<Racer.Command> racer : finishingTimes.keySet()) {
+                if (finishingTimes.get(racer) == it) {
+                    final String path = racer.path().toString();
+                    final String racerId = path.substring(path.length() - 1);
+                    logger.info("Racer " + racerId + " finished in " + ( (double)it - start ) / 1000 + " seconds.");
+                }
+            }
+        });
     }
 
     private void displayRace() {
