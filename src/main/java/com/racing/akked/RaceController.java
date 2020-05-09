@@ -57,7 +57,7 @@ public class RaceController extends AbstractBehavior<RaceController.Command> {
                     start = System.currentTimeMillis();
                     currentPositions = new HashMap<>();
                     for (int i = 0; i < 10; i++) {
-                        ActorRef<Racer.Command> racer = getContext().spawn(Racer.create(), "racer " + i);
+                        ActorRef<Racer.Command> racer = getContext().spawn(Racer.create(), "racer" + i);
                         currentPositions.put(racer, 0);
                         racer.tell(new Racer.StartCommand(raceLength));
                     }
