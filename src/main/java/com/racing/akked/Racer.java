@@ -151,9 +151,9 @@ public class Racer extends AbstractBehavior<Racer.Command> {
     public Receive<Racer.Command> waitingToStop() {
         return newReceiveBuilder()
 
-                .onAnyMessage(message -> {
-                    return Behaviors.same();
-                })
+                .onAnyMessage(message ->
+                    Behaviors.same()
+                )
 
                 .onSignal(PostStop.class, signal -> {
                     logger.warn("I'm about to terminate");

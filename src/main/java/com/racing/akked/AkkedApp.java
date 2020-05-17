@@ -2,7 +2,7 @@ package com.racing.akked;
 
 import akka.actor.typed.ActorSystem;
 
-public class App {
+public class AkkedApp {
 
     public static void main(String[] args) {
 

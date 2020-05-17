@@ -5,7 +5,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class App
+public class ThreadedApp
 {
     static int raceLength = 100;
     static int displayLength = 160;
